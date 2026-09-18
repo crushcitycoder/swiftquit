@@ -11,17 +11,23 @@ enum WindowVisibility {
     }
 
     static func hasUserVisibleWindow(for processIdentifier: pid_t) -> Bool {
+        // Preserve the previous conservative behavior if WindowServer cannot be queried.
+        userVisibleApplicationProcessIdentifiers()?.contains(processIdentifier) ?? true
+    }
+
+    static func userVisibleApplicationProcessIdentifiers() -> Set<pid_t>? {
         guard let windowInfo = CGWindowListCopyWindowInfo(
             [.optionOnScreenOnly, .excludeDesktopElements],
             kCGNullWindowID
         ) as? [[String: Any]] else {
-            // Preserve the previous conservative behavior if WindowServer cannot be queried.
-            return true
+            return nil
         }
 
-        return hasUserVisibleWindow(
-            for: processIdentifier,
-            in: windowInfo.compactMap(Record.init(windowInfo:))
+        return Set(
+            windowInfo
+                .compactMap(Record.init(windowInfo:))
+                .filter { $0.layer == 0 && $0.alpha > 0 }
+                .map(\.ownerPID)
         )
     }
 

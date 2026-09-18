@@ -12,6 +12,9 @@ import Swindler
 import PromiseKit
 
 class SwiftQuit {
+    private static var windowClosureMonitor = WindowClosureMonitor()
+    private static var pendingApplicationClosures: Set<pid_t> = []
+    private static var windowMonitor: Timer?
     
     /*
      Settings
@@ -93,6 +96,39 @@ class SwiftQuit {
 
             closeApplication(pid: event.application.processIdentifier)
         }
+
+        startWindowMonitor()
+    }
+
+    private class func startWindowMonitor() {
+        scanVisibleWindows()
+        windowMonitor = Timer.scheduledTimer(withTimeInterval: 0.5, repeats: true) { _ in
+            scanVisibleWindows()
+        }
+    }
+
+    private class func scanVisibleWindows() {
+        guard let visibleProcessIdentifiers = WindowVisibility.userVisibleApplicationProcessIdentifiers() else {
+            return
+        }
+
+        let applications = NSWorkspace.shared.runningApplications.filter {
+            $0.isFinishedLaunching && $0.activationPolicy == .regular
+        }
+        let activeProcessIdentifiers = Set(applications.map(\.processIdentifier))
+        windowClosureMonitor.removeStoppedProcesses(activeProcessIdentifiers)
+
+        for application in applications {
+            let processIdentifier = application.processIdentifier
+            let hasVisibleWindow = visibleProcessIdentifiers.contains(processIdentifier)
+
+            if windowClosureMonitor.observe(
+                processIdentifier: processIdentifier,
+                hasVisibleWindow: hasVisibleWindow
+            ) {
+                closeApplication(pid: processIdentifier)
+            }
+        }
     }
     
     class func closeApplication(pid:Int32) {
@@ -123,8 +159,13 @@ class SwiftQuit {
         guard !excludedServices.contains(applicationName),
               shouldCloseApplication(applicationName: applicationName) else { return }
 
+        guard !pendingApplicationClosures.contains(pid) else { return }
+        pendingApplicationClosures.insert(pid)
+
         let closeDelay = Int(swiftQuitSettings["closeDelay"] ?? "2") ?? 2
         DispatchQueue.main.asyncAfter(deadline: .now() + .seconds(closeDelay)) {
+            defer { pendingApplicationClosures.remove(pid) }
+
             guard !app.isTerminated else { return }
 
             if WindowVisibility.hasUserVisibleWindow(for: pid) {
