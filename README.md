@@ -7,7 +7,7 @@ This fork handles apps that retain hidden controller windows after their user-fa
 # Build and install this fork
 This fork uses its own app identity (`Swift Quit Fork`), so it can coexist with the original Swift Quit installation. On a Mac with Xcode installed, check out `main`, run `swift test`, then run `./Scripts/build-and-install-local.sh`. It builds, validates, and installs `Swift Quit Fork.app` in Applications. Enable that app in System Settings → Privacy & Security → Accessibility before using it.
 
-When replacing a previous fork install, the script moves it to `Swift Quit Fork.previous.app` first. Remove or rename that backup before a later replacement.
+When replacing a previous fork install, the script moves it to `.build/PreviousInstall/Swift Quit Fork.app` first. Remove or rename that backup before a later replacement.
 
 The local build is intended for use on the Mac that built it. It is not a notarized replacement for the original developer's public release.
 
