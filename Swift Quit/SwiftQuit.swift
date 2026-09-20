@@ -8,8 +8,6 @@
 import Foundation
 import AppKit
 import AXSwift
-import Swindler
-import PromiseKit
 
 class SwiftQuit {
     private static var pendingApplicationClosures: Set<pid_t> = []
@@ -76,10 +74,9 @@ class SwiftQuit {
         updateSettings()
     }
 
-    @objc class func activateAutomaticAppClosing(){
-        swindler.on { (event: WindowDestroyedEvent) in
-            guard event.external else { return }
-            closeApplication(pid: event.window.application.processIdentifier)
+    @objc class func activateAutomaticAppClosing() -> Bool {
+        CloseButtonMonitor.start { processIdentifier in
+            closeApplication(pid: processIdentifier)
         }
     }
     
@@ -128,7 +125,7 @@ class SwiftQuit {
             terminateApplication(app: app)
         }
     }
-    
+
     class func shouldCloseApplication(applicationName:String) -> Bool {
         return (swiftQuitSettings["excludeBehaviour"] == "excludeApps" && !swiftQuitExcludedApps.contains(applicationName)) || (swiftQuitSettings["excludeBehaviour"] == "includeApps" && swiftQuitExcludedApps.contains(applicationName))
     }
@@ -147,4 +144,89 @@ class SwiftQuit {
     }
     
     
+}
+
+private enum CloseButtonMonitor {
+    private static var eventTap: CFMachPort?
+    private static var eventTapRunLoopSource: CFRunLoopSource?
+    private static var closeButtonClickHandler: ((pid_t) -> Void)?
+
+    static func start(onCloseButtonClick: @escaping (pid_t) -> Void) -> Bool {
+        guard eventTap == nil else { return true }
+        guard CGPreflightListenEventAccess() || CGRequestListenEventAccess() else { return false }
+
+        closeButtonClickHandler = onCloseButtonClick
+        let eventMask = CGEventMask(1) << CGEventType.leftMouseDown.rawValue
+        guard let eventTap = CGEvent.tapCreate(
+            tap: .cgSessionEventTap,
+            place: .headInsertEventTap,
+            options: .listenOnly,
+            eventsOfInterest: eventMask,
+            callback: eventTapCallback,
+            userInfo: nil
+        ) else {
+            closeButtonClickHandler = nil
+            return false
+        }
+
+        let source = CFMachPortCreateRunLoopSource(kCFAllocatorDefault, eventTap, 0)
+        self.eventTap = eventTap
+        eventTapRunLoopSource = source
+        CFRunLoopAddSource(CFRunLoopGetMain(), source, .commonModes)
+        CGEvent.tapEnable(tap: eventTap, enable: true)
+        return true
+    }
+
+    private static let eventTapCallback: CGEventTapCallBack = { _, type, event, _ in
+        if type == .tapDisabledByTimeout, let eventTap {
+            CGEvent.tapEnable(tap: eventTap, enable: true)
+        }
+
+        if type == .leftMouseDown {
+            let point = event.location
+            DispatchQueue.main.async {
+                guard let processIdentifier = processIdentifierOfCloseButton(at: point) else {
+                    return
+                }
+                closeButtonClickHandler?(processIdentifier)
+            }
+        }
+
+        return Unmanaged.passUnretained(event)
+    }
+
+    private static func processIdentifierOfCloseButton(at point: CGPoint) -> pid_t? {
+        var element: AXUIElement?
+        let result = AXUIElementCopyElementAtPosition(
+            AXUIElementCreateSystemWide(),
+            Float(point.x),
+            Float(point.y),
+            &element
+        )
+
+        guard result == .success,
+              let element,
+              WindowVisibility.isWindowCloseButton(subrole: stringAttribute(kAXSubroleAttribute, of: element))
+        else {
+            return nil
+        }
+
+        var processIdentifier: pid_t = 0
+        guard AXUIElementGetPid(element, &processIdentifier) == .success else {
+            return nil
+        }
+
+        return processIdentifier
+    }
+
+    private static func stringAttribute(_ attribute: String, of element: AXUIElement) -> String? {
+        var value: CFTypeRef?
+        guard AXUIElementCopyAttributeValue(element, attribute as CFString, &value) == .success,
+              let value
+        else {
+            return nil
+        }
+
+        return value as? String
+    }
 }

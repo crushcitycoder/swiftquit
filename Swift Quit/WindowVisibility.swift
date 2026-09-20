@@ -36,6 +36,10 @@ enum WindowVisibility {
             record.ownerPID == processIdentifier && record.layer == 0 && record.alpha > 0
         }
     }
+
+    static func isWindowCloseButton(subrole: String?) -> Bool {
+        subrole == "AXCloseButton"
+    }
 }
 
 private extension WindowVisibility.Record {

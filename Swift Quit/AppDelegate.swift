@@ -7,8 +7,6 @@
 
 import Cocoa
 import AXSwift
-import Swindler
-import PromiseKit
 
 var userDefaults = UserDefaults.standard
 var swiftQuitSettings = SwiftQuit.getSettings()
@@ -17,7 +15,6 @@ let storyboard = NSStoryboard(name: "Main", bundle: nil)
 var settingsWindow = (storyboard.instantiateController(withIdentifier: "settings") as! NSWindowController)
 var menu = NSMenu()
 var statusItem: NSStatusItem!
-var swindler: Swindler.State!
 var lastLaunchedAppPid : Int32 = 0;
 
 @main
@@ -30,27 +27,20 @@ class AppDelegate: NSObject, NSApplicationDelegate {
             NSApp.terminate(self)
             return
         }
-        
-        Swindler.initialize().done { state in
-            swindler = state
-            
-            SwiftQuit.activateAutomaticAppClosing()
-            
-            self.loadMenu()
-            
-            if(swiftQuitSettings["menubarIconEnabled"] == "false"){
-                SwiftQuit.hideMenu()
-            }
-            
-            if (swiftQuitSettings["launchHidden"] == "false"){
-                self.openSettings()
-            }
-            
-        }.catch { error in
-            print("Fatal error: failed to initialize Swindler: \(error)")
-            NSApp.terminate(self)
+
+        if !SwiftQuit.activateAutomaticAppClosing() {
+            print("Input Monitoring permission is required to observe window-close clicks")
         }
-        
+
+        loadMenu()
+
+        if(swiftQuitSettings["menubarIconEnabled"] == "false"){
+            SwiftQuit.hideMenu()
+        }
+
+        if (swiftQuitSettings["launchHidden"] == "false"){
+            openSettings()
+        }
     }
     
     func applicationWillTerminate(_ aNotification: Notification) {
@@ -78,8 +68,13 @@ class AppDelegate: NSObject, NSApplicationDelegate {
             button.image = #imageLiteral(resourceName: "MenuIcon")
             button.image?.size = NSSize(width: 18.0, height: 18.0)
             button.image?.isTemplate = true
+            button.toolTip = "Swift Quit Fork"
         }
         statusItem.isVisible = true
+        let forkTitle = NSMenuItem(title: "Swift Quit Fork", action: nil, keyEquivalent: "")
+        forkTitle.isEnabled = false
+        menu.addItem(forkTitle)
+        menu.addItem(.separator())
         let openSettings = NSMenuItem(title: "Settings...", action: #selector(openSettings) , keyEquivalent: ",")
         menu.addItem(openSettings)
         menu.addItem(NSMenuItem(title: "Quit", action: #selector(NSApplication.terminate(_:)), keyEquivalent: "q"))
@@ -94,4 +89,3 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     
     
 }
-

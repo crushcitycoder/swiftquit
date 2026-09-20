@@ -2,10 +2,10 @@
 Swift Quit enables automatic quitting of macOS apps when closing their windows (clicking the red x). It can be configured to quit when the last window of any app closed, or restricted to a specific list of apps. Additionally, you can exclude apps you dont want to quit automatically.
 
 # Fork maintenance
-This fork handles apps that retain hidden controller windows after their user-facing window closes. After a real window-close Accessibility event, it checks the WindowServer for a normal visible window instead of relying on the accessibility client's cached window list. It does not scan or quit inactive apps in the background.
+This fork handles apps that retain hidden controller windows after their user-facing window closes. It responds only after you click the red window-close button, then checks the WindowServer for a normal visible window instead of relying on the accessibility client's cached window list. It does not scan or quit inactive apps in the background.
 
 # Build and install this fork
-This fork uses its own app identity (`Swift Quit Fork`), so it can coexist with the original Swift Quit installation. On a Mac with Xcode installed, check out `main`, run `swift test`, then run `./Scripts/build-and-install-local.sh`. It builds, validates, and installs `Swift Quit Fork.app` in Applications. Enable that app in System Settings → Privacy & Security → Accessibility before using it.
+This fork uses its own app identity (`Swift Quit Fork`), so it can coexist with the original Swift Quit installation. On a Mac with Xcode installed, check out `main`, run `swift test`, then run `./Scripts/build-and-install-local.sh`. It builds, validates, and installs `Swift Quit Fork.app` in Applications. Enable that app in System Settings → Privacy & Security → Accessibility and Input Monitoring before using it.
 
 When replacing a previous fork install, the script moves it to `.build/PreviousInstall/Swift Quit Fork.app` first. Remove or rename that backup before a later replacement.
 

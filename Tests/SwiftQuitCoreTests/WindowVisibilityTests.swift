@@ -25,4 +25,13 @@ final class WindowVisibilityTests: XCTestCase {
 
         XCTAssertFalse(WindowVisibility.hasUserVisibleWindow(for: 42, in: records))
     }
+
+    func testIdentifiesTheRedWindowCloseButton() {
+        XCTAssertTrue(WindowVisibility.isWindowCloseButton(subrole: "AXCloseButton"))
+    }
+
+    func testRejectsOtherTrafficLightAndUnrelatedControls() {
+        XCTAssertFalse(WindowVisibility.isWindowCloseButton(subrole: "AXMinimizeButton"))
+        XCTAssertFalse(WindowVisibility.isWindowCloseButton(subrole: nil))
+    }
 }
