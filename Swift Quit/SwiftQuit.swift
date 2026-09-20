@@ -12,9 +12,7 @@ import Swindler
 import PromiseKit
 
 class SwiftQuit {
-    private static var windowClosureMonitor = WindowClosureMonitor()
     private static var pendingApplicationClosures: Set<pid_t> = []
-    private static var windowMonitor: Timer?
     
     /*
      Settings
@@ -82,52 +80,6 @@ class SwiftQuit {
         swindler.on { (event: WindowDestroyedEvent) in
             guard event.external else { return }
             closeApplication(pid: event.window.application.processIdentifier)
-        }
-
-        swindler.on { (event: ApplicationMainWindowChangedEvent) in
-            guard event.external, event.oldValue != nil, event.newValue == nil else { return }
-            closeApplication(pid: event.application.processIdentifier)
-        }
-
-        swindler.on { (event: ApplicationIsHiddenChangedEvent) in
-            guard event.external,
-                  event.newValue,
-                  event.application.mainWindow.value == nil else { return }
-
-            closeApplication(pid: event.application.processIdentifier)
-        }
-
-        startWindowMonitor()
-    }
-
-    private class func startWindowMonitor() {
-        scanVisibleWindows()
-        windowMonitor = Timer.scheduledTimer(withTimeInterval: 0.5, repeats: true) { _ in
-            scanVisibleWindows()
-        }
-    }
-
-    private class func scanVisibleWindows() {
-        guard let visibleProcessIdentifiers = WindowVisibility.userVisibleApplicationProcessIdentifiers() else {
-            return
-        }
-
-        let applications = NSWorkspace.shared.runningApplications.filter {
-            $0.isFinishedLaunching && $0.activationPolicy == .regular
-        }
-        let activeProcessIdentifiers = Set(applications.map(\.processIdentifier))
-        windowClosureMonitor.removeStoppedProcesses(activeProcessIdentifiers)
-
-        for application in applications {
-            let processIdentifier = application.processIdentifier
-            let hasVisibleWindow = visibleProcessIdentifiers.contains(processIdentifier)
-
-            if windowClosureMonitor.observe(
-                processIdentifier: processIdentifier,
-                hasVisibleWindow: hasVisibleWindow
-            ) {
-                closeApplication(pid: processIdentifier)
-            }
         }
     }
     

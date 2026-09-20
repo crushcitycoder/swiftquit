@@ -17,7 +17,7 @@ let package = Package(
                 "SwiftQuit.swift",
                 "ViewController.swift"
             ],
-            sources: ["WindowVisibility.swift", "WindowClosureMonitor.swift"]
+            sources: ["WindowVisibility.swift"]
         ),
         .testTarget(
             name: "SwiftQuitCoreTests",
