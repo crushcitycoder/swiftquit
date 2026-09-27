@@ -28,3 +28,15 @@ enum ApplicationExclusions {
         return URL(fileURLWithPath: configuredPath).standardizedFileURL.path
     }
 }
+
+enum ApplicationBundles {
+    static func containsEmbeddedApplication(
+        _ candidateBundleURL: URL,
+        in applicationBundleURL: URL
+    ) -> Bool {
+        let applicationPath = applicationBundleURL.standardizedFileURL.path
+        let candidatePath = candidateBundleURL.standardizedFileURL.path
+
+        return candidatePath.hasPrefix(applicationPath + "/")
+    }
+}

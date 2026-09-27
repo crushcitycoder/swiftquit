@@ -74,4 +74,22 @@ final class WindowVisibilityTests: XCTestCase {
             )
         )
     }
+
+    func testIdentifiesApplicationBundledHelpers() {
+        XCTAssertTrue(
+            ApplicationBundles.containsEmbeddedApplication(
+                URL(fileURLWithPath: "/Applications/Adobe Photoshop 2025/Adobe Photoshop 2025.app/Contents/Frameworks/AdobeCrashReporter.framework/Versions/A/Adobe Crash Processor.app"),
+                in: URL(fileURLWithPath: "/Applications/Adobe Photoshop 2025/Adobe Photoshop 2025.app")
+            )
+        )
+    }
+
+    func testDoesNotTreatAdjacentApplicationBundlesAsEmbedded() {
+        XCTAssertFalse(
+            ApplicationBundles.containsEmbeddedApplication(
+                URL(fileURLWithPath: "/Applications/Adobe Photoshop 2025/Adobe Photoshop 2025 Plus.app"),
+                in: URL(fileURLWithPath: "/Applications/Adobe Photoshop 2025/Adobe Photoshop 2025.app")
+            )
+        )
+    }
 }

@@ -10,6 +10,7 @@ import AppKit
 import AXSwift
 
 class SwiftQuit {
+    private static let embeddedApplicationTerminationDelay: TimeInterval = 0.5
     private static var pendingApplicationClosures: Set<pid_t> = []
     
     /*
@@ -133,6 +134,58 @@ class SwiftQuit {
     class func terminateApplication(app:NSRunningApplication) {
         print("Terminated " + (app.localizedName ?? "<no_name>"))
         app.terminate()
+
+        guard let applicationBundleURL = app.bundleURL else { return }
+        let mainProcessIdentifier = app.processIdentifier
+
+        DispatchQueue.main.asyncAfter(deadline: .now() + embeddedApplicationTerminationDelay) {
+            guard app.isTerminated else { return }
+
+            terminateEmbeddedApplications(
+                in: applicationBundleURL,
+                excluding: mainProcessIdentifier,
+                force: false
+            )
+        }
+        DispatchQueue.main.asyncAfter(deadline: .now() + embeddedApplicationTerminationDelay + 1) {
+            guard app.isTerminated else { return }
+
+            terminateEmbeddedApplications(
+                in: applicationBundleURL,
+                excluding: mainProcessIdentifier,
+                force: true
+            )
+        }
+    }
+
+    private class func terminateEmbeddedApplications(
+        in applicationBundleURL: URL,
+        excluding mainProcessIdentifier: pid_t,
+        force: Bool
+    ) {
+        let embeddedApplications = NSWorkspace.shared.runningApplications.filter { application in
+            guard application.processIdentifier != mainProcessIdentifier,
+                  !application.isTerminated,
+                  let bundleURL = application.bundleURL
+            else {
+                return false
+            }
+
+            return ApplicationBundles.containsEmbeddedApplication(
+                bundleURL,
+                in: applicationBundleURL
+            )
+        }
+
+        for embeddedApplication in embeddedApplications {
+            if force {
+                print("Force-terminated embedded helper " + (embeddedApplication.localizedName ?? "<no_name>"))
+                embeddedApplication.forceTerminate()
+            } else {
+                print("Terminating embedded helper " + (embeddedApplication.localizedName ?? "<no_name>"))
+                embeddedApplication.terminate()
+            }
+        }
     }
     
     class func hideMenu(){
