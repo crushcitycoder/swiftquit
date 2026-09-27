@@ -92,26 +92,22 @@ class SwiftQuit {
             print("Application with PID \(pid) has no bundle URL")
             return
         }
-        var applicationName = bundleURL.absoluteString
 
         guard app.isFinishedLaunching,
               app.activationPolicy == .regular else { return }
 
-        applicationName.remove(at: applicationName.index(before: applicationName.endIndex))
-        applicationName = applicationName.replacingOccurrences(of: "file://", with: "")
-        applicationName = applicationName.replacingOccurrences(of: "%20", with: " ")
-
         guard myAppPid != pid else { return }
 
         let excludedServices:[String] = ["/System/Library/CoreServices/Spotlight.app","/System/Library/CoreServices/Finder.app","/System/Library/CoreServices/NotificationCenter.app"]
+        let settings = getSettings()
 
-        guard !excludedServices.contains(applicationName),
-              shouldCloseApplication(applicationName: applicationName) else { return }
+        guard !excludedServices.contains(bundleURL.standardizedFileURL.path),
+              shouldCloseApplication(bundleURL: bundleURL, settings: settings) else { return }
 
         guard !pendingApplicationClosures.contains(pid) else { return }
         pendingApplicationClosures.insert(pid)
 
-        let closeDelay = Int(swiftQuitSettings["closeDelay"] ?? "2") ?? 2
+        let closeDelay = Int(settings["closeDelay"] ?? "2") ?? 2
         DispatchQueue.main.asyncAfter(deadline: .now() + .seconds(closeDelay)) {
             defer { pendingApplicationClosures.remove(pid) }
 
@@ -126,8 +122,12 @@ class SwiftQuit {
         }
     }
 
-    class func shouldCloseApplication(applicationName:String) -> Bool {
-        return (swiftQuitSettings["excludeBehaviour"] == "excludeApps" && !swiftQuitExcludedApps.contains(applicationName)) || (swiftQuitSettings["excludeBehaviour"] == "includeApps" && swiftQuitExcludedApps.contains(applicationName))
+    class func shouldCloseApplication(bundleURL: URL, settings: [String: String]) -> Bool {
+        ApplicationExclusions.shouldCloseApplication(
+            at: bundleURL,
+            excludeBehaviour: settings["excludeBehaviour"],
+            configuredPaths: getExcludedApps()
+        )
     }
     
     class func terminateApplication(app:NSRunningApplication) {

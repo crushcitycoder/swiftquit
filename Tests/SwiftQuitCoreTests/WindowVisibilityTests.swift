@@ -34,4 +34,44 @@ final class WindowVisibilityTests: XCTestCase {
         XCTAssertFalse(WindowVisibility.isWindowCloseButton(subrole: "AXMinimizeButton"))
         XCTAssertFalse(WindowVisibility.isWindowCloseButton(subrole: nil))
     }
+
+    func testExclusionMatchesStandardizedPathWithSpaces() {
+        let shouldClose = ApplicationExclusions.shouldCloseApplication(
+            at: URL(fileURLWithPath: "/Applications/Hidden Bar.app"),
+            excludeBehaviour: "excludeApps",
+            configuredPaths: ["/Applications/Hidden Bar.app/"]
+        )
+
+        XCTAssertFalse(shouldClose)
+    }
+
+    func testIncludedAppModeClosesOnlyConfiguredApps() {
+        let hiddenBarURL = URL(fileURLWithPath: "/Applications/Hidden Bar.app")
+        let configuredPaths = ["file:///Applications/Hidden%20Bar.app/"]
+
+        XCTAssertTrue(
+            ApplicationExclusions.shouldCloseApplication(
+                at: hiddenBarURL,
+                excludeBehaviour: "includeApps",
+                configuredPaths: configuredPaths
+            )
+        )
+        XCTAssertFalse(
+            ApplicationExclusions.shouldCloseApplication(
+                at: URL(fileURLWithPath: "/Applications/Swift Quit Fork.app"),
+                excludeBehaviour: "includeApps",
+                configuredPaths: configuredPaths
+            )
+        )
+    }
+
+    func testUnknownExclusionModeNeverClosesAnApp() {
+        XCTAssertFalse(
+            ApplicationExclusions.shouldCloseApplication(
+                at: URL(fileURLWithPath: "/Applications/Hidden Bar.app"),
+                excludeBehaviour: nil,
+                configuredPaths: []
+            )
+        )
+    }
 }
